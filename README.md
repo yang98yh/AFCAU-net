@@ -10,7 +10,7 @@
 <h3 align="center">AFCAU-net Framework</h3>
 
 <p align="center">
-  <img src="images/Conv Block.png" alt="Logo" width="886.5" height="397.1">
+  <img src="images/Conv Block.png" alt="Logo" width="590" height="872">
 </p>
 
 <h3 align="center">Conv Block</h3>
