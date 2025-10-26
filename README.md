@@ -6,25 +6,21 @@
 <p align="center">
   <img src="images/AFCAU-Net.png" alt="Logo" width="886.5" height="397.1">
 </p>
-
 <h3 align="center">AFCAU-net Framework</h3>
 
 <p align="center">
-  <img src="images/Conv Block.png" alt="Logo" width="210" height="654">
+  <img src="images/Conv Block.png" alt="Logo" width="590" height="872">
 </p>
-
 <h3 align="center">Conv Block</h3>
 
 <p align="center">
-  <a href="https://gitee.com/lose_recall/ubrfc-net">
+  <a href="https://github.com/Lose-Code/UBRFC-Net">
     <img src="images/FCA.png" alt="Logo" width="785" height="351">
   </a>
 </p>
-
 <h3 align="center">Adaptive Fine-Grained Channel Attention</h3>
-
 <p align="center">
-  <a href="https://gitee.com/lose_recall/ubrfc-net"></a>
+  <a href="https://github.com/Lose-Code/UBRFC-Net">GitHub Repository</a>
 </p>
 
 
