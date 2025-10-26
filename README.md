@@ -9,19 +9,16 @@
 <h3 align="center">AFCAU-net Framework</h3>
 
 <p align="center">
-  <img src="images/Conv Block.png" alt="Logo" width="590" height="872">
+  <img src="images/Conv Block.png" alt="Logo" width="210" height="660">
 </p>
 <h3 align="center">Conv Block</h3>
 
 <p align="center">
-  <a href="https://github.com/Lose-Code/UBRFC-Net">
-    <img src="images/FCA.png" alt="Logo" width="785" height="351">
-  </a>
+  <img src="images/FCA.png" alt="Logo" width="785" height="351">
 </p>
-<h3 align="center">Adaptive Fine-Grained Channel Attention</h3>
-<p align="center">
-  <a href="https://github.com/Lose-Code/UBRFC-Net">GitHub Repository</a>
-</p>
+<h3 align="center">
+  <a href="https://github.com/Lose-Code/UBRFC-Net">Adaptive Fine-Grained Channel Attention</a>
+</h3>
 
 
 ### Experimental Environment
