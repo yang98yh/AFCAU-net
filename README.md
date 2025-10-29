@@ -44,14 +44,15 @@
 │      Outdoor_00.png
 │
 ├─model
-│      AFCAU-net.py
+│      AFCAUnet.py
 │      test.py
 │      train.py
+│      rebuild.py
 │
 ├─utils
 │      Sgy2Npy.py
-│      GP.py
-│      dataset.py
+│      GetPatches.py
+│      SignalProcessing.py
 │
 ├─LICENSE
 └─README.md
@@ -76,6 +77,12 @@ python train.py
 python test.py 
  ```
 
+### Rebuild
+
+ ```shell
+python rebuild.py 
+ ```
+
 
 ### Qualitative Results
 
@@ -94,4 +101,4 @@ python test.py
 
 ### Thanks
 
-We would like to express our sincere gratitude to the researchers, developers, and academic community whose pioneering work made this project possible.
+We would like to express our sincere gratitude to the researchers, developers, and academic community whose pioneering work made this project possible.Special thanks to Bilibili creator “夜剑听雨” and the authors of UBRFC-Net for their contributions.
