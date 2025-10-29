@@ -101,4 +101,4 @@ python rebuild.py
 
 ### Thanks
 
-We would like to express our sincere gratitude to the researchers, developers, and academic community whose pioneering work made this project possible.Special thanks to Bilibili creator “夜剑听雨” and the authors of UBRFC-Net for their contributions.
+We would like to express our sincere gratitude to the researchers, developers, and academic community whose pioneering work made this project possible.Special thanks to Bilibili creator “夜剑听雨” and the authors of [UBRFC-Net](https://github.com/Lose-Code/UBRFC-Net) for their contributions.
