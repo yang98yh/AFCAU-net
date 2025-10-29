@@ -1,4 +1,4 @@
-from model.AFCAU-net import Unet
+from model.AFCAUnet import Unet
 from utils.dataset import MyDataset
 from torch import optim
 import torch.nn as nn
