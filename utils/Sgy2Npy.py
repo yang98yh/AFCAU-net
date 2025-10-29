@@ -3,12 +3,12 @@ from GetPatches import read_segy_data
 import random
 import os
 
-file_path1 = os.path.join("..\\data\\", "GC103.sgy")
+file_path1 = os.path.join("..\\data\\", "BP2007.sgy")
 
 
 sgy_data = read_segy_data(file_path1)
-shot_num = 100
-traces = 120
+shot_num = 50
+traces = 800
 shot_index = [k for k in range(shot_num)]
 random.shuffle(shot_index)
 random.seed(2024)
