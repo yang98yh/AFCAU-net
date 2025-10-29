@@ -4,22 +4,32 @@ import torch.nn as nn
 
 
 class Double_conv(nn.Module):
-    def __init__(self, in_ch, out_ch):
-        super().__init__()
+    def __init__(self, in_ch, out_ch, stride=1, scale=0.1, map_reduce=8):
+        super(Double_conv, self).__init__()
+
+        # First part: Double convolution
         self.conv1 = nn.Sequential(
             nn.Conv2d(in_ch, out_ch, 3, padding=1),
             nn.BatchNorm2d(out_ch),
             nn.LeakyReLU(inplace=True)
         )
-        self.conv2 =CDW(out_ch)
-        self.at11 = FEM(out_ch,out_ch)
+
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(out_ch, out_ch, 3, padding=1),
+            nn.BatchNorm2d(out_ch),
+            nn.LeakyReLU(inplace=True)
+        )
+
+        self.dlk = FCAttention(out_ch)
 
     def forward(self, x):
+        # Apply Double Conv
         x1 = self.conv1(x)
-        x2 = self.at11(x1)
-        x3 = self.conv2(x2)+x2
+        x2 = self.conv2(x1)
+        x3 = self.dlk(x2)
+        x = x3 + x1  
 
-        return x3
+        return x
 
 class In_conv(nn.Module):
     def __init__(self, in_ch, out_ch):
@@ -29,6 +39,7 @@ class In_conv(nn.Module):
     def forward(self, x):
         x = self.conv(x)
         return x
+
 class Down(nn.Module):
     def __init__(self, in_ch, out_ch):
         super(Down, self).__init__()
@@ -44,26 +55,24 @@ class Down(nn.Module):
 class Up(nn.Module):
     def __init__(self, in_ch, out_ch, Transpose=False):
         super(Up, self).__init__()
-
         if Transpose:
-            self.up = nn.ConvTranspose2d(in_ch, in_ch//2, kernel_size=2, stride=2)
+            self.up = nn.ConvTranspose2d(in_ch, in_ch // 2, kernel_size=2, stride=2)
         else:
             self.up = nn.Sequential(nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
-                                    nn.Conv2d(in_ch, in_ch//2, kernel_size=1),
+                                    nn.Conv2d(in_ch, in_ch // 2, kernel_size=1),
                                     nn.LeakyReLU(inplace=True))
         self.conv = Double_conv(in_ch, out_ch)
 
     def forward(self, x1, x2):
-
         x1 = self.up(x1)
 
         diffY = x2.size()[2] - x1.size()[2]
         diffX = x2.size()[3] - x1.size()[3]
-        x1 = nn.functional.pad(x1, (diffX // 2, diffX - diffX//2,
-                                    diffY // 2, diffY - diffY//2))
-
+        x1 = nn.functional.pad(x1, (diffX // 2, diffX - diffX // 2,
+                                    diffY // 2, diffY - diffY // 2))
         x = torch.cat([x2, x1], dim=1)
         x = self.conv(x)
+
         return x
 
 class OutConv(nn.Module):
@@ -75,121 +84,85 @@ class OutConv(nn.Module):
         x = self.conv(x)
         x = torch.tanh(x)
         return x
-###########################################################
-class FEM(nn.Module):
-    def __init__(self, in_planes, out_planes, stride=1, scale=0.1, map_reduce=8):
-        super(FEM, self).__init__()
-        self.scale = scale
-        self.out_channels = out_planes
-        inter_planes = in_planes // map_reduce
-        self.branch0 = nn.Sequential(
-            BasicConv(in_planes, 2 * inter_planes, kernel_size=1, stride=stride),
-            BasicConv(2 * inter_planes, 2 * inter_planes, kernel_size=3, stride=1, padding=1, relu=False)
-        )
-        self.branch1 = nn.Sequential(
-            BasicConv(in_planes, inter_planes, kernel_size=1, stride=1),
-            BasicConv(inter_planes, (inter_planes // 2) * 3, kernel_size=(1, 3), stride=stride, padding=(0, 1)),
-            BasicConv((inter_planes // 2) * 3, 2 * inter_planes, kernel_size=(3, 1), stride=stride, padding=(1, 0)),
-            BasicConv(2 * inter_planes, 2 * inter_planes, kernel_size=3, stride=1, padding=5, dilation=5, relu=False)
-        )
-        self.branch2 = nn.Sequential(
-            BasicConv(in_planes, inter_planes, kernel_size=1, stride=1),
-            BasicConv(inter_planes, (inter_planes // 2) * 3, kernel_size=(3, 1), stride=stride, padding=(1, 0)),
-            BasicConv((inter_planes // 2) * 3, 2 * inter_planes, kernel_size=(1, 3), stride=stride, padding=(0, 1)),
-            BasicConv(2 * inter_planes, 2 * inter_planes, kernel_size=3, stride=1, padding=5, dilation=5, relu=False)
-        )
 
-        self.ConvLinear = BasicConv(6 * inter_planes, out_planes, kernel_size=1, stride=1, relu=False)
-        self.shortcut = BasicConv(in_planes, out_planes, kernel_size=1, stride=stride, relu=False)
-        self.relu = nn.ReLU(inplace=False)
+###############################################################################################################
+import math
+class Mix(nn.Module):
+    def __init__(self, m=-0.80):
+        super(Mix, self).__init__()
+        w = torch.nn.Parameter(torch.FloatTensor([m]), requires_grad=True)
+        w = torch.nn.Parameter(w, requires_grad=True)
+        self.w = w
+        self.mix_block = nn.Sigmoid()
 
-    def forward(self, x):
-        x0 = self.branch0(x)
-        x1 = self.branch1(x)
-        x2 = self.branch2(x)
-
-        out = torch.cat((x0, x1, x2), 1)
-        out = self.ConvLinear(out)
-        short = self.shortcut(x)
-        out = out * self.scale + short
-        out = self.relu(out)
-
+    def forward(self, fea1, fea2):
+        mix_factor = self.mix_block(self.w)
+        out = fea1 * mix_factor.expand_as(fea1) + fea2 * (1 - mix_factor.expand_as(fea2))
         return out
-class BasicConv(nn.Module):
-    def __init__(self, in_planes, out_planes, kernel_size, stride=1, padding=0, dilation=1, groups=1, relu=True,
-                 bn=True, bias=False):
-        super(BasicConv, self).__init__()
-        self.out_channels = out_planes
-        self.conv = nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding,
-                              dilation=dilation, groups=groups, bias=bias)
-        self.bn = nn.BatchNorm2d(out_planes, eps=1e-5, momentum=0.01, affine=True) if bn else None
-        self.relu = nn.ReLU(inplace=True) if relu else None
 
-    def forward(self, x):
-        x = self.conv(x)
-        if self.bn is not None:
-            x = self.bn(x)
-        if self.relu is not None:
-            x = self.relu(x)
-        return x
-###########################################################
-class CDW(nn.Module):
-    def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.):
-        super().__init__()
-        out_features = out_features or in_features
-        hidden_features = hidden_features or in_features
-        self.fc1 = nn.Conv2d(in_features, hidden_features, 1)
-        self.dwconv = nn.Conv2d(hidden_features, hidden_features, 3, 1, 1, bias=True, groups=hidden_features)
-        self.act = act_layer()
-        self.fc2 = nn.Conv2d(hidden_features, out_features, 1)
-        self.drop = nn.Dropout(drop)
+class FCAttention(nn.Module):
+    def __init__(self,channel,b=1, gamma=2):
+        super(FCAttention, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        #一维卷积
+        t = int(abs((math.log(channel, 2) + b) / gamma))
+        k = t if t % 2 else t + 1
+        self.conv1 = nn.Conv1d(1, 1, kernel_size=k, padding=int(k / 2), bias=False)
+        self.fc = nn.Conv2d(channel, channel, 1, padding=0, bias=True)
+        self.sigmoid = nn.Sigmoid()
+        self.mix = Mix()
 
-    def forward(self, x):
-        x = self.fc1(x)     # conv 1*1
-        x = self.dwconv(x)  # dwconv
-        x = self.act(x)     # GELU
-        x = self.drop(x)
-        x = self.fc2(x)    # conv 1*1
-        x = self.drop(x)
-        return x
+
+    def forward(self, input):
+        x = self.avg_pool(input)
+        x1 = self.conv1(x.squeeze(-1).transpose(-1, -2)).transpose(-1, -2)#(1,64,1)
+        x2 = self.fc(x).squeeze(-1).transpose(-1, -2)#(1,1,64)
+        out1 = torch.sum(torch.matmul(x1,x2),dim=1).unsqueeze(-1).unsqueeze(-1)#(1,64,1,1)
+        out1 = self.sigmoid(out1)
+        out2 = torch.sum(torch.matmul(x2.transpose(-1, -2),x1.transpose(-1, -2)),dim=1).unsqueeze(-1).unsqueeze(-1)
+
+        out2 = self.sigmoid(out2)
+        out = self.mix(out1,out2)
+        out = self.conv1(out.squeeze(-1).transpose(-1, -2)).transpose(-1, -2).unsqueeze(-1)
+        out = self.sigmoid(out)
+
+        return input*out
+##############################################################################################################
+
 
 class Unet(nn.Module):
     def __init__(self):
-        super(Unet, self).__init__()
+        super(Unet1, self).__init__()
         self.inc = In_conv(1, 64)
         self.down1 = Down(64, 128)
         self.down2 = Down(128, 256)
         self.down3 = Down(256, 512)
-
         self.down4 = Down(512, 1024)
 
-        self.up1 = Up(1024, 512, Transpose=True)
-        self.up2 = Up(512, 256, Transpose=True)
-        self.up3 = Up(256, 128, Transpose=True)
-        self.up4 = Up(128, 64, Transpose=True)
+        self.up1 = Up(1024, 512,Transpose=True)
+        self.up2 = Up(512, 256,Transpose=True)
+        self.up3 = Up(256, 128,Transpose=True)
+        self.up4 = Up(128, 64,Transpose=True)
 
         self.outc = OutConv(64, 1)
 
     def forward(self, x0):
-        # 计算掩码
         mask = self.get_mask(x0)
         i=x0
-        x1 = self.inc(x0)
 
+        x1 = self.inc(x0)
         x2 = self.down1(x1)
         x3 = self.down2(x2)
         x4 = self.down3(x3)
-
         x5 = self.down4(x4)
 
-        d4 = self.up1(x5, x4)
-        d3 = self.up2(d4, x3)
-        d2 = self.up3(d3, x2)
-        d1 = self.up4(d2, x1)
+        x = self.up1(x5, x4)
+        x = self.up2(x, x3)
+        x = self.up3(x, x2)
+        x = self.up4(x, x1)
 
-        x = self.outc(d1)
-        x = x+i
-        # 应用掩码
+        x = self.outc(x)
+        x = i+x
         y = x0 + mask * x
         return y
 
