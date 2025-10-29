@@ -7,7 +7,6 @@ class Double_conv(nn.Module):
     def __init__(self, in_ch, out_ch, stride=1, scale=0.1, map_reduce=8):
         super(Double_conv, self).__init__()
 
-        # First part: Double convolution
         self.conv1 = nn.Sequential(
             nn.Conv2d(in_ch, out_ch, 3, padding=1),
             nn.BatchNorm2d(out_ch),
@@ -23,7 +22,6 @@ class Double_conv(nn.Module):
         self.dlk = FCAttention(out_ch)
 
     def forward(self, x):
-        # Apply Double Conv
         x1 = self.conv1(x)
         x2 = self.conv2(x1)
         x3 = self.dlk(x2)
@@ -65,7 +63,6 @@ class Up(nn.Module):
 
     def forward(self, x1, x2):
         x1 = self.up(x1)
-
         diffY = x2.size()[2] - x1.size()[2]
         diffX = x2.size()[3] - x1.size()[3]
         x1 = nn.functional.pad(x1, (diffX // 2, diffX - diffX // 2,
@@ -104,7 +101,6 @@ class FCAttention(nn.Module):
     def __init__(self,channel,b=1, gamma=2):
         super(FCAttention, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        #一维卷积
         t = int(abs((math.log(channel, 2) + b) / gamma))
         k = t if t % 2 else t + 1
         self.conv1 = nn.Conv1d(1, 1, kernel_size=k, padding=int(k / 2), bias=False)
@@ -115,9 +111,9 @@ class FCAttention(nn.Module):
 
     def forward(self, input):
         x = self.avg_pool(input)
-        x1 = self.conv1(x.squeeze(-1).transpose(-1, -2)).transpose(-1, -2)#(1,64,1)
-        x2 = self.fc(x).squeeze(-1).transpose(-1, -2)#(1,1,64)
-        out1 = torch.sum(torch.matmul(x1,x2),dim=1).unsqueeze(-1).unsqueeze(-1)#(1,64,1,1)
+        x1 = self.conv1(x.squeeze(-1).transpose(-1, -2)).transpose(-1, -2)
+        x2 = self.fc(x).squeeze(-1).transpose(-1, -2)
+        out1 = torch.sum(torch.matmul(x1,x2),dim=1).unsqueeze(-1).unsqueeze(-1)
         out1 = self.sigmoid(out1)
         out2 = torch.sum(torch.matmul(x2.transpose(-1, -2),x1.transpose(-1, -2)),dim=1).unsqueeze(-1).unsqueeze(-1)
 
